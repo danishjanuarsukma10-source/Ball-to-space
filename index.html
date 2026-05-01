@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>⚽ Ball to Space</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    overflow: hidden;
+    font-family: 'Share Tech Mono', monospace;
+    touch-action: none;
+    background: #000;
+    user-select: none;
+  }
+
+  canvas { display: block; }
+
+  #ui {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    padding: 16px 20px;
+    pointer-events: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .score-box {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 8px 16px;
+    backdrop-filter: blur(6px);
+  }
+
+  .score-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .score-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+  }
+
+  .best-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffd700;
+    text-align: right;
+  }
+
+  #overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+  }
+
+  .panel {
+    text-align: center;
+    padding: 40px 48px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    max-width: 340px;
+    width: 90%;
+  }
+
+  .panel-icon {
+    font-size: 56px;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .panel h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 26px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  .panel p {
+    color: rgba(255,255,255,0.5);
+    font-size: 13px;
+    margin-bottom: 6px;
+    line-height: 1.6;
+  }
+
+  .score-display {
+    margin: 20px 0;
+    padding: 16px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .score-display .big {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 40px;
+    font-weight: 900;
+    color: #fff;
+  }
+
+  .score-display .label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .best-row {
+    font-size: 13px;
+    color: #ffd700;
+    margin-top: 6px;
+  }
+
+  .btn {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 14px 36px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #000;
+    background: #fff;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.2s;
+  }
+
+  .btn:active { transform: scale(0.96); }
+
+  .tips {
+    margin-top: 16px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 1px;
+  }
+
+  #altitude-bar {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 160px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  #altitude-fill {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: linear-gradient(to top, #00e5ff, #ff0066);
+    border-radius: 3px;
+    transition: height 0.3s;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="ui">
+  <div class="score-box">
+    <div class="score-label">Altitude</div>
+    <div class="score-value" id="score">0</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+    <div class="score-box" style="text-align:right">
+      <div class="score-label">Best</div>
+      <div class="best-value" id="best">0</div>
+    </div>
+    <div class="score-box" style="text-align:right">
+      <div class="score-label">Finish</div>
+      <div class="best-value" style="color:#00ffaa" id="finish-count">0x</div>
+    </div>
+  </div>
+</div>
+
+<div id="altitude-bar"><div id="altitude-fill" style="height:0%"></div></div>
+
+<div id="overlay">
+  <div class="panel" id="start-panel">
+    <span class="panel-icon">⚽</span>
+    <h1>BALL TO<br>SPACE</h1>
+    <p>Tap untuk bounce! Geser kiri-kanan.<br>Capai 50.000 untuk FINISH!</p>
+    <div class="tips">TAP untuk mulai</div>
+    <button class="btn" onclick="startGame()">LAUNCH</button>
+  </div>
+
+  <div class="panel" id="finish-panel" style="display:none">
+    <span class="panel-icon">🏆</span>
+    <h1>FINISH!</h1>
+    <div class="score-display">
+      <div class="label">Altitude Tercapai</div>
+      <div class="big" style="color:#00ffaa">50.000</div>
+      <div class="best-row" id="finish-count-display"></div>
+    </div>
+    <button class="btn" style="background:#00ffaa" onclick="continueAfterFinish()">LANJUT LAGI</button>
+  </div>
+
+  <div class="panel" id="gameover-panel" style="display:none">
+    <span class="panel-icon">💥</span>
+    <h1>MISSION<br>FAILED</h1>
+    <div class="score-display">
+      <div class="label">Score</div>
+      <div class="big" id="final-score">0</div>
+      <div class="best-row" id="best-row"></div>
+    </div>
+    <div style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:8px" id="finish-summary"></div>
+    <button class="btn" onclick="restartGame()">TRY AGAIN</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+// ─── Resize ───────────────────────────────────────────────
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+// ─── State ────────────────────────────────────────────────
+let state = "start"; // start | playing | dead
+let score = 0;
+let bestScore = 0;
+let finishCount = 0;
+let camY = 0;
+let groundY = 0;
+const FINISH_TARGET = 50000;
+
+// ─── Player ───────────────────────────────────────────────
+const player = { x: 0, y: 0, vy: 0, vx: 0, rotation: 0 };
+const GRAVITY = 0.55;
+const JUMP_FORCE = -16;
+const BALL_R = 16;
+
+// ─── Fire particles (meteor trail) ────────────────────────
+let fireParticles = [];
+
+// ─── Stars (fixed positions) ──────────────────────────────
+const STARS = [];
+for (let i = 0; i < 200; i++) {
+  STARS.push({
+    x: Math.random() * 3000,
+    y: Math.random() * 6000,
+    r: Math.random() * 1.5 + 0.3,
+    a: Math.random() * 0.6 + 0.4
+  });
+}
+
+// ─── Platforms ────────────────────────────────────────────
+let platforms = [];
+const PLAT_W_MIN = 60, PLAT_W_MAX = 120;
+const PLAT_GAP_Y = 120; // vertical spacing between platforms
+
+function generatePlatforms() {
+  platforms = [];
+  platforms.push({ x: canvas.width / 2 - 60, y: groundY - 80, w: 120, type: "normal" });
+  let y = groundY - 80;
+  // Generate enough platforms to reach 50k (each unit ≈ 1px, need ~50000px upward)
+  for (let i = 0; i < 400; i++) {
+    // Makin tinggi makin susah: gap makin jauh, platform makin kecil
+    const difficulty = Math.min(i / 400, 1);
+    const gap = PLAT_GAP_Y + difficulty * 80 + Math.random() * 60;
+    y -= gap;
+    const minW = Math.max(40, PLAT_W_MIN - difficulty * 20);
+    const maxW = Math.max(50, PLAT_W_MAX - difficulty * 40);
+    const w = minW + Math.random() * (maxW - minW);
+    const x = Math.random() * (canvas.width - w - 20) + 10;
+    const movingChance = i > 5 ? Math.min(0.1 + difficulty * 0.4, 0.6) : 0;
+    const type = Math.random() < movingChance ? "moving" : "normal";
+    platforms.push({ x, y, w, type, dir: 1, speed: 1 + difficulty * 2 + Math.random() * 1.5 });
+  }
+}
+
+// ─── Clouds ───────────────────────────────────────────────
+const CLOUDS = [];
+for (let i = 0; i < 30; i++) {
+  CLOUDS.push({
+    x: Math.random() * 2000 - 500,
+    y: Math.random() * 2000,
+    scale: 0.5 + Math.random() * 1,
+    alpha: 0.15 + Math.random() * 0.2
+  });
+}
+
+// ─── Init ─────────────────────────────────────────────────
+function init() {
+  groundY = canvas.height - 40;
+  player.x = canvas.width / 2;
+  player.y = groundY - BALL_R;
+  player.vy = 0;
+  player.vx = 0;
+  player.rotation = 0;
+  camY = 0;
+  score = 0;
+  fireParticles = [];
+  document.getElementById("score").textContent = "0";
+  document.getElementById("altitude-fill").style.height = "0%";
+  generatePlatforms();
+}
+
+// ─── Sound ────────────────────────────────────────────────
+let audioCtx;
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playSound(freq, dur, type = "sine", vol = 0.3) {
+  try {
+    const ac = getAudio();
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ac.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, ac.currentTime + dur);
+    gain.gain.setValueAtTime(vol, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.start();
+    osc.stop(ac.currentTime + dur);
+  } catch(e) {}
+}
+function playJump() { playSound(400, 0.12, "square", 0.15); }
+function playLand() { playSound(200, 0.08, "sine", 0.2); }
+
+// ─── Input ────────────────────────────────────────────────
+let touching = false;
+let touchX = 0;
+
+function doTap() {
+  if (state === "playing") {
+    player.vy = JUMP_FORCE;
+    playJump();
+  }
+}
+
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
+  touching = true;
+  touchX = e.touches[0].clientX;
+  doTap();
+}, { passive: false });
+
+canvas.addEventListener("touchmove", e => {
+  e.preventDefault();
+  if (touching && state === "playing") {
+    const newX = e.touches[0].clientX;
+    player.x = Math.max(BALL_R, Math.min(canvas.width - BALL_R, newX));
+    touchX = newX;
+  }
+}, { passive: false });
+
+canvas.addEventListener("touchend", () => { touching = false; player.vx = 0; });
+
+canvas.addEventListener("click", doTap);
+
+document.addEventListener("keydown", e => {
+  if (e.code === "Space" || e.code === "ArrowUp") doTap();
+  if (e.code === "ArrowLeft")  player.x = Math.max(BALL_R, player.x - 20);
+  if (e.code === "ArrowRight") player.x = Math.min(canvas.width - BALL_R, player.x + 20);
+});
+
+document.addEventListener("mousemove", e => {
+  if (state === "playing" && e.buttons === 1) {
+    player.x = Math.max(BALL_R, Math.min(canvas.width - BALL_R, e.clientX));
+  }
+});
+
+// ─── Start / Restart ──────────────────────────────────────
+function startGame() {
+  finishCount = 0;
+  init();
+  state = "playing";
+  player.y = groundY - BALL_R;
+  player.vy = JUMP_FORCE;
+  document.getElementById("overlay").style.display = "none";
+}
+
+function continueAfterFinish() {
+  // Reset posisi tapi pertahankan finishCount
+  init();
+  state = "playing";
+  player.y = groundY - BALL_R;
+  player.vy = JUMP_FORCE;
+  document.getElementById("overlay").style.display = "none";
+  document.getElementById("finish-panel").style.display = "none";
+}
+
+function restartGame() {
+  finishCount = 0;
+  document.getElementById("finish-count").textContent = "0x";
+  init();
+  state = "playing";
+  player.y = groundY - BALL_R;
+  player.vy = JUMP_FORCE;
+  document.getElementById("overlay").style.display = "none";
+  document.getElementById("gameover-panel").style.display = "none";
+  document.getElementById("start-panel").style.display = "none";
+}
+
+// ─── Update ───────────────────────────────────────────────
+function update() {
+  // Gravity
+  player.vy += GRAVITY;
+  player.y += player.vy;
+
+  // Ball rotation (spins as it moves)
+  player.rotation += player.vx * 0.05 + 0.04;
+
+  // Fire particles — spawn when falling fast AND sudah di luar angkasa
+  const isFalling = player.vy > 6;
+  const altitudeT = Math.min(score / 2500, 1);
+  const inSpace = score > 1500; // hanya di luar angkasa
+  if (isFalling && inSpace) {
+    for (let i = 0; i < 3; i++) {
+      fireParticles.push({
+        x: player.x + (Math.random() - 0.5) * BALL_R,
+        y: player.y + BALL_R * 0.5,
+        vx: (Math.random() - 0.5) * 2,
+        vy: Math.random() * 2 + 1,
+        life: 1,
+        size: Math.random() * 8 + 4,
+        hue: Math.random() * 40 // orange to red
+      });
+    }
+  }
+
+  // Update fire particles
+  fireParticles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy - camY * 0; // stays in world space
+    p.life -= 0.06;
+    p.size *= 0.93;
+  });
+  fireParticles = fireParticles.filter(p => p.life > 0);
+
+  // Move moving platforms
+  platforms.forEach(pl => {
+    if (pl.type === "moving") {
+      pl.x += pl.dir * pl.speed;
+      if (pl.x <= 10 || pl.x + pl.w >= canvas.width - 10) pl.dir *= -1;
+    }
+  });
+
+  // Platform collision (ball bottom touches platform top)
+  if (player.vy > 0) {
+    platforms.forEach(pl => {
+      const prevBottom = player.y + BALL_R - player.vy;
+      const bottom = player.y + BALL_R;
+      if (player.x >= pl.x - BALL_R * 0.6 && player.x <= pl.x + pl.w + BALL_R * 0.6 &&
+          bottom >= pl.y && bottom <= pl.y + 18 &&
+          prevBottom <= pl.y + 4) {
+        player.y = pl.y - BALL_R;
+        player.vy = JUMP_FORCE;
+        playJump();
+      }
+    });
+  }
+
+  // Ground collision
+  if (player.vy > 0 && player.y + BALL_R >= groundY) {
+    if (score > 30) {
+      player.y = groundY - BALL_R;
+      state = "dead";
+      if (score > bestScore) bestScore = score;
+      document.getElementById("final-score").textContent = score;
+      document.getElementById("best").textContent = bestScore;
+      const br = document.getElementById("best-row");
+      br.textContent = score >= bestScore ? "🏆 New Record!" : "Best: " + bestScore;
+      document.getElementById("finish-summary").textContent =
+        finishCount > 0 ? `✅ Finish ${finishCount}x sebelum jatuh!` : "";
+      document.getElementById("gameover-panel").style.display = "block";
+      document.getElementById("overlay").style.display = "flex";
+      return;
+    } else {
+      player.y = groundY - BALL_R;
+      player.vy = JUMP_FORCE;
+      playJump();
+    }
+  }
+
+  // Wrap horizontal
+  if (player.x < -BALL_R) player.x = canvas.width + BALL_R;
+  if (player.x > canvas.width + BALL_R) player.x = -BALL_R;
+
+  // Camera
+  const targetCam = player.y - canvas.height * 0.45;
+  camY += (targetCam - camY) * 0.12;
+
+  // Score
+  const alt = Math.floor(groundY - player.y);
+  if (alt > score) {
+    score = alt;
+    document.getElementById("score").textContent = score;
+    const pct = Math.min(score / FINISH_TARGET * 100, 100);
+    document.getElementById("altitude-fill").style.height = pct + "%";
+  }
+
+  // FINISH CHECK — capai 50k!
+  if (score >= FINISH_TARGET && state === "playing") {
+    finishCount++;
+    state = "finish";
+    document.getElementById("finish-count").textContent = finishCount + "x";
+    document.getElementById("finish-count-display").textContent =
+      `🎉 Finish ke-${finishCount}! Keren banget!`;
+    document.getElementById("finish-panel").style.display = "block";
+    document.getElementById("overlay").style.display = "flex";
+  }
+}
+
+// ─── Draw ─────────────────────────────────────────────────
+function drawBackground() {
+  const t = Math.min(Math.max(score / 2500, 0), 1);
+
+  // Sky gradient: blue → deep space
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  const r1 = Math.round(20 + (1 - t) * 10);
+  const g1 = Math.round(60 + (1 - t) * 80);
+  const b1 = Math.round(100 + (1 - t) * 80);
+  grad.addColorStop(0, `rgb(${Math.round(r1*(1-t))},${Math.round(g1*(1-t))},${Math.round(b1*(1-t))})`);
+  grad.addColorStop(1, "rgb(0,0,0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Stars (appear when high enough)
+  if (t > 0.1) {
+    STARS.forEach(s => {
+      const sx = ((s.x % canvas.width) + canvas.width) % canvas.width;
+      const sy = ((s.y - camY * 0.08) % (canvas.height * 4) + canvas.height * 4) % (canvas.height * 4);
+      if (sy > canvas.height) return;
+      ctx.globalAlpha = s.a * Math.min(t * 3, 1);
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  // Clouds (only at low altitude)
+  if (t < 0.7) {
+    CLOUDS.forEach(cl => {
+      const cy = cl.y - camY * 0.3;
+      if (cy < -80 || cy > canvas.height + 80) return;
+      ctx.globalAlpha = cl.alpha * (1 - t * 1.2);
+      ctx.fillStyle = "white";
+      const cx = ((cl.x) % (canvas.width + 200) + canvas.width + 200) % (canvas.width + 200);
+      const sc = cl.scale;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 50 * sc, 22 * sc, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(cx + 30 * sc, cy + 6 * sc, 34 * sc, 16 * sc, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(cx - 28 * sc, cy + 6 * sc, 28 * sc, 14 * sc, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawGround() {
+  const gy = groundY - camY;
+  // Grass top
+  ctx.fillStyle = "#2d5a1b";
+  ctx.fillRect(0, gy, canvas.width, 8);
+  // Dirt
+  ctx.fillStyle = "#6b3a1f";
+  ctx.fillRect(0, gy + 8, canvas.width, canvas.height);
+}
+
+function drawPlatforms() {
+  platforms.forEach(pl => {
+    const py = pl.y - camY;
+    if (py < -20 || py > canvas.height + 20) return;
+
+    if (pl.type === "moving") {
+      // Moving platform: cyan glow
+      ctx.shadowColor = "#00e5ff";
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = "#00bcd4";
+    } else {
+      ctx.shadowColor = "rgba(255,255,255,0.2)";
+      ctx.shadowBlur = 4;
+      ctx.fillStyle = "#7986cb";
+    }
+
+    ctx.beginPath();
+    ctx.roundRect(pl.x, py, pl.w, 10, 5);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    // Top highlight
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.beginPath();
+    ctx.roundRect(pl.x + 4, py + 1, pl.w - 8, 3, 2);
+    ctx.fill();
+  });
+}
+
+function drawFireParticles() {
+  fireParticles.forEach(p => {
+    const screenY = p.y - camY;
+    if (screenY < -20 || screenY > canvas.height + 20) return;
+    ctx.globalAlpha = p.life * 0.85;
+    const grad = ctx.createRadialGradient(p.x, screenY, 0, p.x, screenY, p.size);
+    grad.addColorStop(0, `hsl(${p.hue + 50}, 100%, 90%)`);
+    grad.addColorStop(0.4, `hsl(${p.hue + 20}, 100%, 60%)`);
+    grad.addColorStop(1, `hsla(${p.hue}, 100%, 40%, 0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(p.x, screenY, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawBall(x, y) {
+  const isFalling = player.vy > 6;
+  const isReentry = isFalling && score > 1500;
+
+  // ── SELALU ADA API DI SEKELILING BOLA ──
+  const t = Date.now() / 1000;
+  const flameCount = 8;
+  for (let i = 0; i < flameCount; i++) {
+    const angle = (i / flameCount) * Math.PI * 2 + player.rotation;
+    const wobble = Math.sin(t * 6 + i * 1.3) * 4;
+    const flameLen = BALL_R * 0.9 + wobble + (isReentry ? 14 : 0);
+    const fx = x + Math.cos(angle) * (BALL_R + flameLen * 0.5);
+    const fy = y + Math.sin(angle) * (BALL_R + flameLen * 0.5);
+    const fsize = 6 + wobble * 0.5 + (isReentry ? 8 : 0);
+
+    ctx.globalAlpha = 0.75 + Math.sin(t * 8 + i) * 0.15;
+    const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, fsize);
+    fg.addColorStop(0, "#fffbe0");
+    fg.addColorStop(0.3, "#ffaa00");
+    fg.addColorStop(0.7, "#ff3300");
+    fg.addColorStop(1, "rgba(255,0,0,0)");
+    ctx.fillStyle = fg;
+    ctx.beginPath();
+    ctx.arc(fx, fy, fsize, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // ── INNER GLOW ──
+  const innerGlow = ctx.createRadialGradient(x, y, BALL_R * 0.4, x, y, BALL_R * 1.6);
+  innerGlow.addColorStop(0, "rgba(255,200,50,0.35)");
+  innerGlow.addColorStop(1, "rgba(255,50,0,0)");
+  ctx.fillStyle = innerGlow;
+  ctx.beginPath();
+  ctx.arc(x, y, BALL_R * 1.6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Meteor glow aura (re-entry heat)
+  if (isReentry) {
+    const glowSize = BALL_R * 3 + Math.sin(t * 10) * 5;
+    ctx.globalAlpha = 0.5;
+    const aura = ctx.createRadialGradient(x, y, BALL_R * 0.3, x, y, glowSize);
+    aura.addColorStop(0, "#fff6e0");
+    aura.addColorStop(0.3, "#ff8800");
+    aura.addColorStop(0.7, "#ff2200");
+    aura.addColorStop(1, "transparent");
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(x, y, glowSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Shock wave ring
+    ctx.globalAlpha = 0.3;
+    ctx.strokeStyle = "#ffaa00";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, BALL_R * 2 + Math.sin(t * 12) * 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Shadow on ground
+  const groundScreenY = groundY - camY;
+  const distToGround = groundScreenY - y;
+  if (distToGround > 0 && distToGround < canvas.height * 0.6) {
+    const shadowAlpha = Math.max(0, 0.4 - distToGround / (canvas.height * 0.6) * 0.4);
+    const shadowScale = Math.max(0.2, 1 - distToGround / (canvas.height * 0.6));
+    ctx.globalAlpha = shadowAlpha;
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.ellipse(x, groundScreenY - 2, BALL_R * shadowScale * 1.2, BALL_R * shadowScale * 0.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Draw ball with rotation
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(player.rotation);
+
+  // Ball gradient
+  const ballGrad = ctx.createRadialGradient(-BALL_R * 0.3, -BALL_R * 0.35, BALL_R * 0.05, 0, 0, BALL_R);
+  if (isReentry) {
+    // Hot glowing ball during re-entry
+    ballGrad.addColorStop(0, "#fff5c0");
+    ballGrad.addColorStop(0.4, "#ff9900");
+    ballGrad.addColorStop(0.75, "#cc2200");
+    ballGrad.addColorStop(1, "#550000");
+  } else {
+    // Normal ball - orange/red sporty look
+    ballGrad.addColorStop(0, "#ffffff");
+    ballGrad.addColorStop(0.25, "#ff9d00");
+    ballGrad.addColorStop(0.7, "#e84300");
+    ballGrad.addColorStop(1, "#8b1a00");
+  }
+  ctx.fillStyle = ballGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Ball seam lines
+  ctx.strokeStyle = isReentry ? "rgba(255,200,0,0.4)" : "rgba(255,255,255,0.3)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, BALL_R * 0.7, 0, Math.PI);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, BALL_R * 0.7, Math.PI, Math.PI * 2);
+  ctx.stroke();
+
+  // Shine
+  ctx.globalAlpha = isReentry ? 0.9 : 0.6;
+  const shine = ctx.createRadialGradient(-BALL_R * 0.3, -BALL_R * 0.35, 0, -BALL_R * 0.2, -BALL_R * 0.25, BALL_R * 0.55);
+  shine.addColorStop(0, "rgba(255,255,255,0.9)");
+  shine.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = shine;
+  ctx.beginPath();
+  ctx.arc(0, 0, BALL_R, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+}
+
+// ─── Main Loop ────────────────────────────────────────────
+function loop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawBackground();
+
+  if (state === "playing" || state === "dead") {
+    if (state === "playing") update();
+
+    drawGround();
+    drawPlatforms();
+    drawFireParticles();
+    drawBall(player.x, player.y - camY);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+init();
+loop();
+</script>
+</body>
+</html>
