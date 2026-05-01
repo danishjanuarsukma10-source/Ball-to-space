@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>⚽ Ball to Space</title>
-<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#000000">
 <meta name="description" content="Bounce the ball to space! Tap to jump, reach 50000 altitude!">
 <meta name="mobile-web-app-capable" content="yes">
@@ -363,7 +362,6 @@ function playLand() { playSound(200, 0.08, "sine", 0.2); }
 
 // ─── Input ────────────────────────────────────────────────
 let touching = false;
-let touchX = 0;
 
 function doTap() {
   if (state === "playing") {
@@ -375,20 +373,17 @@ function doTap() {
 canvas.addEventListener("touchstart", e => {
   e.preventDefault();
   touching = true;
-  touchX = e.touches[0].clientX;
   doTap();
 }, { passive: false });
 
 canvas.addEventListener("touchmove", e => {
   e.preventDefault();
   if (touching && state === "playing") {
-    const newX = e.touches[0].clientX;
-    player.x = Math.max(BALL_R, Math.min(canvas.width - BALL_R, newX));
-    touchX = newX;
+    player.x = Math.max(BALL_R, Math.min(canvas.width - BALL_R, e.touches[0].clientX));
   }
 }, { passive: false });
 
-canvas.addEventListener("touchend", () => { touching = false; player.vx = 0; });
+canvas.addEventListener("touchend", () => { touching = false; });
 
 canvas.addEventListener("click", doTap);
 
@@ -800,11 +795,6 @@ function loop() {
 
 init();
 loop();
-</script>
-<script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
 </script>
 </body>
 </html>
